@@ -1,11 +1,11 @@
-defmodule Luau do
+defmodule Lunar do
   @moduledoc """
   Let's get this party started!
   """
   @type t :: %__MODULE__{
           id: nil | String.t(),
           lua_files: [String.t()],
-          modules: [Luau.Library.t()],
+          modules: [Lunar.Library.t()],
           state: tuple(),
           variables: %{[String.t()] => any()}
         }
@@ -18,11 +18,11 @@ defmodule Luau do
   @type error :: {:error, atom() | String.t()}
 
   @doc """
-  Initialize a new Luau
+  Initialize a new Lunar
   """
-  @spec init() :: Luau.t()
+  @spec init() :: Lunar.t()
   def init do
-    %Luau{id: Nanoid.generate(), state: Luerl.init()}
+    %Lunar{id: Nanoid.generate(), state: Luerl.init()}
   end
 
   @doc """
@@ -30,16 +30,16 @@ defmodule Luau do
 
   # Examples
 
-    iex> luau = Luau.init()
-    iex> luau = Luau.set_variable(luau, "a", 1)
+    iex> lunar = Lunar.init()
+    iex> lunar = Lunar.set_variable(lunar, "a", 1)
   """
-  @spec set_variable(Luau.t(), [String.t()] | String.t(), any()) :: result | error
-  def set_variable(luau, key, value) do
+  @spec set_variable(Lunar.t(), [String.t()] | String.t(), any()) :: result | error
+  def set_variable(lunar, key, value) do
     key = List.wrap(key)
 
-    case Luerl.set_table_keys_dec(luau.state, key, value) do
+    case Luerl.set_table_keys_dec(lunar.state, key, value) do
       {:ok, _result, new_state} ->
-        {:ok, %{luau | state: new_state, variables: Map.put(luau.variables, key, value)}}
+        {:ok, %{lunar | state: new_state, variables: Map.put(lunar.variables, key, value)}}
 
       {:lua_error, reason, _state} ->
         {:error, reason}
@@ -47,27 +47,27 @@ defmodule Luau do
   end
 
   @doc """
-  Load a Luau.Library into state.
+  Load a Lunar.Library into state.
 
   # Examples
 
-    iex> luau = Luau.init()
-    iex> luau = Luau.load_module!(luau, Math)
+    iex> lunar = Lunar.init()
+    iex> lunar = Lunar.load_module!(lunar, Math)
   """
-  @spec load_module!(Luau.t(), Luau.Library.t()) :: Luau.t()
-  def load_module!(luau, module) do
-    new_state = Luerl.load_module_dec(luau.state, [module.scope()], module)
-    %{luau | state: new_state, modules: [module | luau.modules]}
+  @spec load_module!(Lunar.t(), Lunar.Library.t()) :: Lunar.t()
+  def load_module!(lunar, module) do
+    new_state = Luerl.load_module_dec(lunar.state, [module.scope()], module)
+    %{lunar | state: new_state, modules: [module | lunar.modules]}
   end
 
   @doc """
   Load Lua code into state from file.
   """
-  @spec load_lua!(Luau.t(), String.t()) :: Luau.t()
-  def load_lua!(luau, path) do
-    case Luerl.dofile(luau.state, String.to_charlist(path)) do
+  @spec load_lua!(Lunar.t(), String.t()) :: Lunar.t()
+  def load_lua!(lunar, path) do
+    case Luerl.dofile(lunar.state, String.to_charlist(path)) do
       {:ok, _result, new_state} ->
-        %{luau | state: new_state, lua_files: [path | luau.lua_files]}
+        %{lunar | state: new_state, lua_files: [path | lunar.lua_files]}
 
       :error ->
         raise "Could not load Lua file #{path}, file not found"
@@ -75,20 +75,20 @@ defmodule Luau do
   end
 
   @doc """
-  Evaluate Lua code within a given Luau
-    
+  Evaluate Lua code within a given Lunar
+
   # Examples
 
-    iex> luau = Luau.init()
-    iex> luau = Luau.load_module!(luau, Math)
-    iex> {:ok, luau} = Luau.set_variable(luau, a, 1)
-    iex> {:ok, [10], _luau} = Luau.run(luau, "return Math.add(a, 9)")
+    iex> lunar = Lunar.init()
+    iex> lunar = Lunar.load_module!(lunar, Math)
+    iex> {:ok, lunar} = Lunar.set_variable(lunar, a, 1)
+    iex> {:ok, [10], _lunar} = Lunar.run(lunar, "return Math.add(a, 9)")
   """
-  @spec run(Luau.t(), String.t()) :: {:ok, any(), Luau.t()} | error
-  def run(luau, lua) do
-    case Luerl.do(luau.state, lua) do
+  @spec run(Lunar.t(), String.t()) :: {:ok, any(), Lunar.t()} | error
+  def run(lunar, lua) do
+    case Luerl.do(lunar.state, lua) do
       {:ok, result, new_state} ->
-        {:ok, result, %{luau | state: new_state}}
+        {:ok, result, %{lunar | state: new_state}}
 
       {:error, reason, _state} ->
         {:error, reason}
