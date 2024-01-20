@@ -5,6 +5,72 @@ defmodule LunarTest do
     {:ok, lunar: Lunar.init()}
   end
 
+  describe ":telemetry" do
+    setup do
+      _ref =
+        :telemetry_test.attach_event_handlers(self(), [
+          [:lunar, :init],
+          [:lunar, :clone],
+          [:lunar, :set_variable],
+          [:lunar, :load_module!],
+          [:lunar, :load_lua!],
+          [:lunar, :run],
+          [:lunar, :run, :success],
+          [:lunar, :run, :failure]
+        ])
+
+      :ok
+    end
+
+    test "emits [:lunar, :init]" do
+      %{id: lunar_id} = Lunar.init()
+
+      assert_receive {[:lunar, :init], _ref, %{count: 1}, %{lunar_id: ^lunar_id}}
+    end
+
+    test "emits [:lunar, :clone]", %{lunar: %{id: clone_from_id} = lunar} do
+      %{id: lunar_id} = Lunar.clone(lunar)
+      assert_receive {[:lunar, :clone], _ref, %{count: 1}, %{lunar_id: ^lunar_id, cloned_id: ^clone_from_id}}
+    end
+
+    test "emits [:lunar, :set_variable]", %{lunar: lunar} do
+      Lunar.set_variable(lunar, :foo, "bar")
+      assert_receive {[:lunar, :set_variable], _ref, %{count: 1}, %{key: [:foo], value: "bar"}}
+    end
+
+    test "emits [:lunar, :load_module!]", %{lunar: lunar} do
+      Lunar.load_module!(lunar, Math)
+      assert_receive {[:lunar, :load_module!], _ref, %{count: 1}, %{scope: "Math", module_name: Math}}
+    end
+
+    test "emits [:lunar, :load_lua!]", %{lunar: lunar} do
+      path = Path.join([__DIR__, "support", "hello.lua"])
+      Lunar.load_lua!(lunar, path)
+      assert_receive {[:lunar, :load_lua!], _ref, %{count: 1}, %{path: ^path}}
+    end
+
+    @tag capture_log: false
+    test "emits [:lunar, :run, :success]", %{lunar: lunar} do
+      Lunar.run(lunar, "return true")
+      assert_receive {[:lunar, :run, :success], _ref, %{count: 1}, %{}}
+    end
+
+    @tag capture_log: false
+    test "emits [:lunar, :run, :failure]", %{lunar: lunar} do
+      # Results in a syntax error
+      Lunar.run(lunar, "1+1=2")
+
+      assert_receive {[:lunar, :run, :failure], _ref, %{count: 1},
+                      %{reason: "line 1: luerl_parse syntax error before: 1"}}
+    end
+  end
+
+  describe "clone/1" do
+    test "sets a new `id`", %{lunar: lunar} do
+      assert lunar.id != Lunar.clone(lunar).id
+    end
+  end
+
   describe "set_variable/3" do
     test "sets a variable", %{lunar: lunar} do
       name = ["name"]
